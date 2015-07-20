@@ -1,7 +1,4 @@
 ;;;;;;;;;; Hotkeys ;;;;;;;;;;
-; Press Ctrl+Alt+P to pause. Press it again to resume.
-^!p::Pause
-#MaxThreadsPerHotkey 3
 ^F12::
 #MaxThreadsPerHotkey 1
 
@@ -10,11 +7,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ProcessName := "FFXIVGAME"
-Simulation := true
-if (Simulation)
-{
-	ProcessName := "Notepad"
-}
+Simulation := false
 
 vCP = 343
 vProgress = 0 ; set by UI
@@ -22,15 +15,13 @@ vDurability = 0 ; set by UI
 
 class BaseSkill
 {
-	name := "none"
 	hotkey := "z"	
 	delay := 0
 	cp := 0
 	durability := 0
 	
-	__New(n, h, d, c = 0, dura = 0)
+	__New(h, d, c = 0, dura = 0)
 	{
-		this.name := n
 		this.hotkey := h
 		this.delay := d
 		this.cp := c
@@ -41,26 +32,26 @@ class BaseSkill
 SkillMap := {}
 
 ; Buffs
-SkillMap["InnerQuiet"] := new BaseSkill("InnerQuiet", "x", 2200, 18, 0)
-SkillMap["TricksOfTheTrade"] := new BaseSkill("TricksOfTheTrade", "z", 2200, -20, 0)
-SkillMap["GreatStrides"] := new BaseSkill("GreatStrides", "q", 2200, 32, 0)
-SkillMap["SteadyHand"] := new BaseSkill("SteadyHand", "4", 2200, 25, 0)
-SkillMap["Innovation"] := new BaseSkill("Innovation", "8", 2200, 18, 0)
+SkillMap["InnerQuiet"] := new BaseSkill("x", 2200, 18, 0)
+SkillMap["TricksOfTheTrade"] := new BaseSkill("z", 2200, -20, 0)
+SkillMap["GreatStrides"] := new BaseSkill("q", 2200, 32, 0)
+SkillMap["SteadyHand"] := new BaseSkill("4", 2200, 25, 0)
+SkillMap["Innovation"] := new BaseSkill("8", 2200, 18, 0)
 
 ; Durability
-SkillMap["Manipulation"] := new BaseSkill("Manipulation", "3", 3500, 88, -30)
-SkillMap["MastersMend"] := new BaseSkill("MastersMend", "+3", 3500, 160, -60)
+SkillMap["Manipulation"] := new BaseSkill("3", 3500, 88, -30)
+SkillMap["MastersMend"] := new BaseSkill("+3", 3500, 160, -60)
 
 ; Quality
-SkillMap["HastyTouch"] := new BaseSkill("HastyTouch", "2", 4000, 0, 10)
-SkillMap["BasicTouch"] := new BaseSkill("BasicTouch", "e", 4000, 18, 10)
-SkillMap["InnovativeTouch"] := new BaseSkill("InnovativeTouch", "0", 4000, 8, 10)
-SkillMap["PreciseTouch"] := new BaseSkill("PreciseTouch", "9", 4000, 18, 10)
-SkillMap["AdvancedTouch"] := new BaseSkill("AdvancedTouch", "+e", 4000, 48, 10)
-SkillMap["Byregots"] := new BaseSkill("Byregots", "7", 4000, 24, 10)
+SkillMap["HastyTouch"] := new BaseSkill("2", 4000, 0, 10)
+SkillMap["BasicTouch"] := new BaseSkill("e", 4000, 18, 10)
+SkillMap["InnovativeTouch"] := new BaseSkill("0", 4000, 8, 10)
+SkillMap["PreciseTouch"] := new BaseSkill("9", 4000, 18, 10)
+SkillMap["AdvancedTouch"] := new BaseSkill("+e", 4000, 48, 10)
+SkillMap["Byregots"] := new BaseSkill("7", 4000, 24, 10)
 
 ; Progress
-SkillMap["CarefulSynthesis"] := new BaseSkill("CarefulSynthesis", "1", 4000, 0, 10)
+SkillMap["CarefulSynthesis"] := new BaseSkill("1", 4000, 0, 10)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Main ;;;;;;;;;;
@@ -89,31 +80,42 @@ ShowDialog()
 	Gui, Add, Edit, vDurability
 	Gui, Add, Button, default xm section, Do Once
 	Gui, Add, Button, ys, Repeat
+	Gui, Add, Button, ys, Pause
 	Gui, Add, Button, ys, Stop
+	Gui, Add, Button, ys, Run Simulation
 	
 	Gui, Show,, Crafting Helper
 	return
 	
 	ButtonOK:
 	ButtonDoOnce:
-	KeepRunning := true
 	Gui, Submit, NoHide
 	Run(Progress, Durability, 1)
 	return
 	
 	ButtonRepeat:
-	KeepRunning := true
 	Gui, Submit, NoHide
 	Run(Progress, Durability, 9999)
 	return
 	
+	ButtonRunSimulation:
+	Gui, Submit, NoHide
+	Run(Progress, Durability, 1, true)
+	return
+	
+	ButtonPause:
+	Pause,,1
+	return
+	
 	ButtonStop:
-	GuiClose:
 	SignalStop()
 	return
+	
+	GuiClose:
+	ExitApp
 }
 
-Run(Progress, Durability, Iterations)
+Run(Progress, Durability, Iterations, RunSimulation = false)
 {
 	global
 	
@@ -123,6 +125,18 @@ Run(Progress, Durability, Iterations)
 		return
 	}
 	
+	KeepRunning := true
+	Simulation := RunSimulation
+	
+	if (Simulation)
+	{
+		ProcessName := "Notepad"
+	}
+	else
+	{
+		ProcessName := "FFXIVGAME"
+	}
+	
 	Tooltip Running
 	Sleep 1000
 	Tooltip
@@ -130,8 +144,11 @@ Run(Progress, Durability, Iterations)
 	Loop %Iterations%
 	{
 		DoOnce(Progress, Durability)
-		if not KeepRunning
+		
+		if Simulation or not KeepRunning
 			break
+		
+		Sleep 7000
 	}
 	
 	Tooltip Done
@@ -143,28 +160,28 @@ Run(Progress, Durability, Iterations)
 
 DoOnce(Progress, Durability)
 {
-	global KeepRunning
+	global KeepRunning, Simulation
 
 	BasicCraft(Progress, Durability)
-	
-	if KeepRunning
-		Sleep 7000
 }
 
-BasicCraft(ProgressRequiredToComplete, Durability)
+BasicCraft(Progress, Durability)
 {
 	global
 	
 	CurrentCP := vCP
 	
-	StartSynthesis()
-	Sleep 1500
+	if (not Simulation)
+	{
+		StartSynthesis()
+		Sleep 1500
+	}
 	
 	ExecuteAction("InnerQuiet", CurrentCP, Durability)
 	
 	if (Durability = 40)
 	{
-		if (ProgressRequiredToComplete <= 1)
+		if (Progress <= 1)
 		{
 			ExecuteAction("BasicTouch", CurrentCP, Durability)
 			
@@ -187,7 +204,7 @@ BasicCraft(ProgressRequiredToComplete, Durability)
 		}
 		else
 		{
-			Loop % ProgressRequiredToComplete - 1
+			Loop % Progress - 1
 			{
 				ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
 			}
@@ -209,7 +226,7 @@ BasicCraft(ProgressRequiredToComplete, Durability)
 		ExecuteAction("HastyTouch", CurrentCP, Durability)
 		ExecuteAction("HastyTouch", CurrentCP, Durability)
 		
-		Loop % ProgressRequiredToComplete - 1
+		Loop % Progress - 1
 		{
 			ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
 		}
@@ -237,105 +254,8 @@ BasicCraft(ProgressRequiredToComplete, Durability)
 	
 	if (Simulation)
 	{
-		MsgBox % CurrentCP "," Durability
+		MsgBox % "Simulation results CP: " CurrentCP ", Dura: " Durability
 	}
-}
-
-GSMTrivial()
-{
-	global
-	
-	StartSynthesis()
-	Sleep 1500
-	
-	SendToGame(INNER_QUIET, 2200)
-	
-	SendToGame(GREAT_STRIDES, 2200)
-	SendToGame(STEADY_HAND, 2200)
-	SendToGame(INNOVATION, 2200)
-	SendToGame(QUALITY, 4000)
-	SendToGame(GREAT_STRIDES, 2200)
-	SendToGame(QUALITY, 4000)
-	SendToGame(STEADY_HAND, 2200)
-	SendToGame(GREAT_STRIDES, 2200)
-	SendToGame(QUALITY, 4000)
-	
-	SendToGame(PROGRESS, 4000)
-}
-
-LargeFood()
-{
-	global
-	
-	StartSynthesis()
-	Sleep 1500
-	
-	SendToGame(INNER_QUIET, 2200)
-	
-	SendToGame(STEADY_HAND, 3000)
-	
-	SendToGame(INNO_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	
-	SendToGame(PROGRESS, 4000)
-	
-	SendToGame(LARGE_DURABILITY, 3500)
-	
-	SendToGame(STEADY_HAND, 3000)
-	
-	SendToGame(BASIC_TOUCH, 4000)
-	SendToGame(INNO_TOUCH, 4000)
-	SendToGame(INNO_TOUCH, 4000)
-	
-	SendToGame(GREAT_STRIDES, 2200)
-	SendToGame(BYREGOTS, 4000)
-	
-	SendToGame(PROGRESS, 4000)
-	SendToGame(PROGRESS, 4000)
-}
-
-GSMGrind(StartWithProgress = 0)
-{
-	global
-	
-	StartSynthesis()
-	Sleep 1500
-	
-	SendToGame(INNER_QUIET, 2200)
-	
-	if StartWithProgress > 0
-	{
-		SendToGame(PROGRESS, 4000)
-	}
-	else
-	{
-		;SendToGame(HASTY_TOUCH, 4000)
-		SendToGame(BASIC_TOUCH, 4000)
-	}
-	
-	SendToGame(DURABILITY, 3500)
-	SendToGame(STEADY_HAND, 3000)
-	
-	SendToGame(INNO_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	
-	SendToGame(DURABILITY, 3500)
-	SendToGame(STEADY_HAND, 3000)
-	
-	SendToGame(INNO_TOUCH, 4000)
-	SendToGame(HASTY_TOUCH, 4000)
-	
-	SendToGame(GREAT_STRIDES, 2200)
-	;SendToGame(INNOVATION, 2200)
-	SendToGame(BYREGOTS, 4000)
-	
-	SendToGame(PROGRESS, 4000)
 }
 
 Mine()
@@ -350,12 +270,10 @@ Mine()
 	SendToGame("{Numpad0}", 500)
 }
 
-StartSynthesis(HQNum = 0)
+StartSynthesis()
 {	
 	SendToGame("{Numpad0}", 750)	
 	SendToGame("{Numpad0}", 1000)
-	
-	;SetHQCount(HQNum)
 	
 	SendToGame("{Numpad0}", 500)
 }
