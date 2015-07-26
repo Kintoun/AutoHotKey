@@ -7,11 +7,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ProcessName := "FFXIVGAME"
-Simulation := false
+Simulation := false ; no need to set here, controlled via UI
 
 vCP = 343
-vProgress = 0 ; set by UI
-vDurability = 0 ; set by UI
+;vProgress = 0 ; set by UI
+;vDurability = 0 ; set by UI
+;vCraftChoice = empty
 
 class BaseSkill
 {
@@ -37,22 +38,74 @@ SkillMap["TricksOfTheTrade"] := new BaseSkill("z", 2200, -20, 0)
 SkillMap["GreatStrides"] := new BaseSkill("q", 2200, 32, 0)
 SkillMap["SteadyHand"] := new BaseSkill("4", 2200, 25, 0)
 SkillMap["Innovation"] := new BaseSkill("8", 2200, 18, 0)
+SkillMap["MakersMark"] := new BaseSkill("+q", 2200, 20, 0)
 
 ; Durability
 SkillMap["Manipulation"] := new BaseSkill("3", 3500, 88, -30)
-SkillMap["MastersMend"] := new BaseSkill("+3", 3500, 160, -60)
+SkillMap["MastersMend"] := new BaseSkill("[", 3500, 160, -60)
 
 ; Quality
 SkillMap["HastyTouch"] := new BaseSkill("2", 4000, 0, 10)
 SkillMap["BasicTouch"] := new BaseSkill("e", 4000, 18, 10)
-SkillMap["InnovativeTouch"] := new BaseSkill("0", 4000, 8, 10)
+SkillMap["InnovativeTouch"] := new BaseSkill("]", 4000, 8, 10)
 SkillMap["PreciseTouch"] := new BaseSkill("9", 4000, 18, 10)
-SkillMap["AdvancedTouch"] := new BaseSkill("+e", 4000, 48, 10)
+SkillMap["AdvancedTouch"] := new BaseSkill("0", 4000, 48, 10)
 SkillMap["Byregots"] := new BaseSkill("7", 4000, 24, 10)
 
 ; Progress
+SkillMap["FlawlessSynthesis"] := new BaseSkill("+1", 4000, 0, 0)
 SkillMap["CarefulSynthesis"] := new BaseSkill("1", 4000, 0, 10)
 
+CraftMap := {}
+DurabilityMap := {}
+
+; Reusable sequences
+InnoHastyx4 := ["InnovativeTouch", "HastyTouch", "HastyTouch", "HastyTouch", "HastyTouch"]
+InnoHastyx3 := ["InnovativeTouch", "HastyTouch", "HastyTouch", "HastyTouch"]
+InnoHastyx2 := ["InnovativeTouch", "HastyTouch", "HastyTouch"]
+
+LowLevelMaterial := ["InnerQuiet", "BasicTouch", "Manipulation", "SteadyHand"]
+LowLevelMaterial.Push(InnoHastyx4*)
+LowLevelMaterial.Push("Manipulation", "SteadyHand", "InnovativeTouch", "InnovativeTouch", "GreatStrides", "Byregots", "CarefulSynthesis")
+CraftMap["LowLevelMaterial"] := LowLevelMaterial
+DurabilityMap["LowLevelMaterial"] := 40
+
+ExtraLowLevelMaterial := ["InnerQuiet", "GreatStrides", "SteadyHand", "Innovation", "AdvancedTouch", "GreatStrides", "AdvancedTouch", "SteadyHand", "GreatStrides", "AdvancedTouch", "CarefulSynthesis"]
+CraftMap["ExtraLowLevelMaterial"] := ExtraLowLevelMaterial
+DurabilityMap["ExtraLowLevelMaterial"] := 40
+
+StandardMaterial := ["InnerQuiet", "CarefulSynthesis", "Manipulation", "SteadyHand"]
+StandardMaterial.Push(InnoHastyx4*)
+StandardMaterial.Push("Manipulation", "SteadyHand", "InnovativeTouch", "InnovativeTouch", "GreatStrides", "Byregots", "CarefulSynthesis")
+CraftMap["StandardMaterial"] := StandardMaterial
+DurabilityMap["StandardMaterial"] := 40
+
+DifficultMaterial := ["InnerQuiet", "CarefulSynthesis", "CarefulSynthesis", "Manipulation", "SteadyHand"]
+DifficultMaterial.Push(InnoHastyx3*)
+DifficultMaterial.Push("Manipulation", "SteadyHand", "InnovativeTouch", "InnovativeTouch", "GreatStrides", "Byregots", "CarefulSynthesis")
+CraftMap["DifficultMaterial"] := DifficultMaterial
+DurabilityMap["DifficultMaterial"] := 40
+
+StandardItem2 := ["InnerQuiet", "SteadyHand"]
+StandardItem2.Push(InnoHastyx4*)
+StandardItem2.Push("CarefulSynthesis")
+StandardItem2.Push("MastersMend", "SteadyHand")
+StandardItem2.Push(InnoHastyx4*)
+StandardItem2.Push("SteadyHand", "Innovation", "HastyTouch", "GreatStrides", "Byregots")
+StandardItem2.Push("CarefulSynthesis")
+CraftMap["StandardItem2"] := StandardItem2
+DurabilityMap["StandardItem2"] := 80
+
+StandardItem3 := ["InnerQuiet", "SteadyHand"]
+StandardItem3.Push(InnoHastyx4*)
+StandardItem3.Push("CarefulSynthesis")
+StandardItem3.Push("MastersMend", "CarefulSynthesis", "SteadyHand")
+StandardItem3.Push(InnoHastyx3*)
+StandardItem3.Push("SteadyHand", "Innovation", "HastyTouch", "GreatStrides", "Byregots")
+StandardItem3.Push("CarefulSynthesis")
+CraftMap["StandardItem3"] := StandardItem3
+DurabilityMap["StandardItem3"] := 80
+			
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; Main ;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -74,10 +127,7 @@ ShowDialog()
 {	
 	global
 	
-	Gui, Add, Text,, Progress:
-	Gui, Add, Text,, Durability:		
-	Gui, Add, Edit, vProgress ym
-	Gui, Add, Edit, vDurability
+	Gui, Add, DropDownList, vCraftChoice, LowLevelMaterial|ExtraLowLevelMaterial|StandardMaterial|DifficultMaterial|StandardItem2|StandardItem3
 	Gui, Add, Button, default xm section, Do Once
 	Gui, Add, Button, ys, Repeat
 	Gui, Add, Button, ys, Pause
@@ -90,17 +140,17 @@ ShowDialog()
 	ButtonOK:
 	ButtonDoOnce:
 	Gui, Submit, NoHide
-	Run(Progress, Durability, 1)
+	Run(CraftChoice, 1)
 	return
 	
 	ButtonRepeat:
 	Gui, Submit, NoHide
-	Run(Progress, Durability, 9999)
+	Run(CraftChoice, 9999)
 	return
 	
 	ButtonRunSimulation:
 	Gui, Submit, NoHide
-	Run(Progress, Durability, 1, true)
+	Run(CraftChoice, 1, true)
 	return
 	
 	ButtonPause:
@@ -115,13 +165,13 @@ ShowDialog()
 	ExitApp
 }
 
-Run(Progress, Durability, Iterations, RunSimulation = false)
+Run(CraftChoice, Iterations, RunSimulation = false)
 {
 	global
 	
-	if (Progress < 1 or Durability < 1 or Iterations < 1)
+	if (Iterations < 1)
 	{
-		MsgBox % "Invalid parameters - Progress:" Progress ", Durability:" Durability
+		MsgBox % "Invalid parameters"
 		return
 	}
 	
@@ -143,7 +193,7 @@ Run(Progress, Durability, Iterations, RunSimulation = false)
 	
 	Loop %Iterations%
 	{
-		DoOnce(Progress, Durability)
+		DoOnce(CraftChoice)
 		
 		if Simulation or not KeepRunning
 			break
@@ -158,18 +208,19 @@ Run(Progress, Durability, Iterations, RunSimulation = false)
 	return
 }
 
-DoOnce(Progress, Durability)
+DoOnce(CraftChoice)
 {
 	global KeepRunning, Simulation
 
-	BasicCraft(Progress, Durability)
+	BasicCraft(CraftChoice)
 }
 
-BasicCraft(Progress, Durability)
+BasicCraft(CraftChoice)
 {
 	global
 	
 	CurrentCP := vCP
+	Durability := DurabilityMap[CraftChoice]
 	
 	if (not Simulation)
 	{
@@ -177,85 +228,17 @@ BasicCraft(Progress, Durability)
 		Sleep 1500
 	}
 	
-	ExecuteAction("InnerQuiet", CurrentCP, Durability)
-	
-	if (Durability = 40)
-	{
-		if (Progress <= 1)
-		{
-			ExecuteAction("BasicTouch", CurrentCP, Durability)
-			
-			ExecuteAction("Manipulation", CurrentCP, Durability)
-			ExecuteAction("SteadyHand", CurrentCP, Durability)
-			
-			ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-			ExecuteAction("HastyTouch", CurrentCP, Durability)
-			ExecuteAction("HastyTouch", CurrentCP, Durability)
-			ExecuteAction("HastyTouch", CurrentCP, Durability)
-			ExecuteAction("HastyTouch", CurrentCP, Durability)
-			
-			ExecuteAction("Manipulation", CurrentCP, Durability)
-			ExecuteAction("SteadyHand", CurrentCP, Durability)
-			
-			ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-			ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-			ExecuteAction("GreatStrides", CurrentCP, Durability)
-			ExecuteAction("Byregots", CurrentCP, Durability)
-		}
-		else
-		{
-			Loop % Progress - 1
-			{
-				ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
-			}
-		}
-		
-		; Finish
-		ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
-	}
-	else if (Durability = 35)
-	{
-	}
-	else if (Durability = 80)
-	{
-		ExecuteAction("SteadyHand", CurrentCP, Durability)
-		
-		ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		
-		Loop % Progress - 1
-		{
-			ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
-		}
-		
-		ExecuteAction("MastersMend", CurrentCP, Durability)
-		
-		ExecuteAction("SteadyHand", CurrentCP, Durability)
-		
-		ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		ExecuteAction("HastyTouch", CurrentCP, Durability)
-		
-		ExecuteAction("SteadyHand", CurrentCP, Durability)		
-		ExecuteAction("InnovativeTouch", CurrentCP, Durability)
-		ExecuteAction("GreatStrides", CurrentCP, Durability)
-		ExecuteAction("Byregots", CurrentCP, Durability)
-		
-		; Finish
-		ExecuteAction("CarefulSynthesis", CurrentCP, Durability)
-	}
-	else if (Durability = 70)
-	{
-	}
-	
+	Craft := CraftMap[CraftChoice]
+	Loop % Craft.MaxIndex()
+		ExecuteAction(Craft[A_Index], CurrentCP, Durability)
+
 	if (Simulation)
 	{
+		SendToGame("{Enter}", 100) ;newline for Notepad
 		MsgBox % "Simulation results CP: " CurrentCP ", Dura: " Durability
 	}
+	
+	return
 }
 
 Mine()
